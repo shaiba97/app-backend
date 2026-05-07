@@ -13,7 +13,7 @@ export class AuthService {
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.users.findUnique({
       where: { email: email.toLowerCase().trim() },
     });
 
@@ -43,6 +43,10 @@ export class AuthService {
       name: user.name,
     };
 
+    console.log(
+      'Auth Service - JWT secret used for signing:',
+      process.env.JWT_SECRET || 'rihla_super_secret_jwt_key_2026',
+    );
     const token = this.jwtService.sign(payload);
 
     return {
@@ -61,7 +65,7 @@ export class AuthService {
   }
 
   async getMe(userId: string) {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.users.findUnique({
       where: { id: userId },
       select: {
         id: true,

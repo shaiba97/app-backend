@@ -1,42 +1,174 @@
-import { IsString, IsNumber, IsOptional, IsEnum } from 'class-validator';
-import { Gender, BookingStatus } from '@prisma/client';
+import {
+  IsString,
+  IsNumber,
+  IsArray,
+  IsEnum,
+  ValidateNested,
+  Min,
+  Max,
+  MinLength,
+  IsOptional,
+  IsNotEmpty,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { BookingStatus, PaymentStatus } from '@prisma/client';
 
-export class StartSessionDto {
+export class PassengerItemDto {
   @IsString()
+  @MinLength(2)
+  name: string;
+
+  @IsNumber()
+  @Min(1)
+  @Max(120)
+  age: number;
+
+  @IsString()
+  @IsEnum(['MALE', 'FEMALE'])
+  gender: 'MALE' | 'FEMALE';
+}
+
+export class CreateBookingDto {
+  @IsString()
+  @IsNotEmpty()
   tripId: string;
 
   @IsNumber()
-  seatNumber: number;
+  @Min(1)
+  seatNumbers: number[];
+
+  @IsString()
+  @IsNotEmpty()
+  passengerContact: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PassengerItemDto)
+  passenger: PassengerItemDto[];
+
+  @IsOptional()
+  @IsEnum(BookingStatus)
+  status?: BookingStatus;
 }
 
-export class AddPassengerDto {
+export class UpdateBookingDto {
+  @IsOptional()
   @IsString()
-  sessionId: string;
+  @IsNotEmpty()
+  customerId?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  tripId?: string;
+
+  @IsOptional()
+  @IsNumber({}, { each: true })
+  @Min(1)
+  seatNumbers?: number[];
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  passengerContact?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PassengerItemDto)
+  passenger?: PassengerItemDto[];
+
+  @IsOptional()
+  @IsEnum(BookingStatus)
+  status?: BookingStatus;
+}
+
+export class CreatePaymentDto {
+  @IsString()
+  @IsNotEmpty()
+  bookingId: string;
 
   @IsString()
-  passengerName: string;
+  @IsNotEmpty()
+  customerId: string;
 
   @IsNumber()
-  passengerAge: number;
+  @Min(0)
+  price: number;
 
-  @IsEnum(Gender)
-  passengerGender: Gender;
+  @IsNumber()
+  @Min(0)
+  totalAmount: number;
 
-  @IsString()
-  passengerContact: string;
-}
+  @IsNumber()
+  @Min(0)
+  companyAmount: number;
 
-export class ConfirmBookingDto {
-  @IsString()
-  sessionId: string;
-}
-
-export class ConfirmPaymentDto {
-  @IsString()
-  @IsOptional()
-  transferReference?: string;
+  @IsNumber()
+  @Min(0)
+  commissionAmount: number;
 
   @IsString()
   @IsOptional()
-  adminNotes?: string;
+  currency?: string;
+
+  @IsOptional()
+  @IsEnum(PaymentStatus)
+  status?: PaymentStatus;
+
+  @IsString()
+  @IsOptional()
+  transactionId?: string;
+
+  @IsString()
+  @IsOptional()
+  receiptFile?: string;
+}
+
+export class UpdatePaymentDto {
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  bookingId?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  customerId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  price?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  totalAmount?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  companyAmount?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  commissionAmount?: number;
+
+  @IsOptional()
+  @IsString()
+  currency?: string;
+
+  @IsOptional()
+  @IsEnum(PaymentStatus)
+  status?: PaymentStatus;
+
+  @IsOptional()
+  @IsString()
+  transactionId?: string;
+
+  @IsOptional()
+  @IsString()
+  receiptFile?: string;
 }

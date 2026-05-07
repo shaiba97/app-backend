@@ -8,7 +8,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 // import { Trip } from '../../trips/entity/trip.entity';
-import { User } from '../../users/entity/user.entity';
+import { UserEntity } from '../../users/entity/user.entity';
 
 export enum SeatStartFrom {
   LEFT = 'LEFT',
@@ -23,9 +23,9 @@ export class Bus {
   @Column({ type: 'varchar', length: 36, name: 'company_id' })
   companyId: string;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @ManyToOne(() => UserEntity, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'company_id' })
-  company: User;
+  company: UserEntity;
 
   @Column({ type: 'varchar', length: 255 })
   name: string;

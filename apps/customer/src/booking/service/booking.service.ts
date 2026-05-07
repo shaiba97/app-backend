@@ -1,134 +1,139 @@
 import {
   Injectable,
-  BadRequestException,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
-import { SessionService } from './session.service';
 import { PaymentService } from './payment.service';
 import { PrismaService } from '@app/prisma';
+import { CreateBookingDto, UpdateBookingDto } from '../dto/booking.dto';
+import { BookingStatus } from '@prisma/client';
 
 @Injectable()
 export class BookingService {
   constructor(
-    private readonly sessionService: SessionService,
     private readonly paymentService: PaymentService,
     private readonly prisma: PrismaService,
   ) {}
 
-  async startSession(data: {
-    customerId: string;
-    tripId: string;
-    seatNumber: number;
-  }) {
-    return this.sessionService.startSession(data);
-  }
-
-  async addPassenger(
-    sessionId: string,
-    customerId: string,
-    data: {
-      passengerName: string;
-      passengerAge: number;
-      passengerGender: 'MALE' | 'FEMALE';
-      passengerContact: string;
-    },
-  ) {
-    return this.sessionService.addPassenger(sessionId, customerId, data);
-  }
-
-  async getSessionSummary(sessionId: string, customerId: string) {
-    const session = await this.sessionService.getSession(sessionId, customerId);
-
-    const bankName = process.env.PAYMENT_BANK_NAME || 'بنك الخرطين';
-    const accountNumber = process.env.PAYMENT_ACCOUNT_NUMBER || '1234567890';
-    const instructions = process.env.PAYMENT_INSTRUCTIONS || 'يرجى تحويل المبلغ';
-
-    return {
-      ...session,
-      paymentInstructions: {
-        bankName: session.bankName || bankName,
-        accountNumber: session.bankAccountNumber || accountNumber,
-        instructions: session.paymentInstructions || instructions,
-        amount: session.price,
-        currency: 'SDG',
-      },
-    };
-  }
-
-  async confirmBooking(sessionId: string, customerId: string) {
-    const session = await this.sessionService.getSession(sessionId, customerId);
-
-    if (!session.passengerName) {
-      throw new BadRequestException('يرجى إدخال بيانات المسافر أولاً');
-    }
-
+  async create(createBookingDto: CreateBookingDto, customerId: string) {
+    console.log(createBookingDto);
+    // Check if trip exists
     const trip = await this.prisma.trip.findUnique({
-      where: { id: session.tripId },
+      where: { id: createBookingDto.tripId },
     });
 
-    const price = trip?.price ? Number(trip.price) : session.price;
+    if (!trip) {
+      throw new NotFoundException('الرحلة غير موجودة');
+    }
+
+    // Check if seat is already booked for this trip
+    const existingBooking = await this.prisma.booking.findFirst({
+      where: {
+        tripId: createBookingDto.tripId,
+        seatNumbers: {
+          hasSome: createBookingDto.seatNumbers,
+        },
+        customerId: customerId,
+        status: {
+          in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+        },
+      },
+    });
+
+    if (existingBooking) {
+      throw new BadRequestException('Seat is already booked');
+    }
 
     const booking = await this.prisma.booking.create({
       data: {
-        customerId: session.customerId,
-        tripId: session.tripId,
-        seatNumber: session.seatNumber,
-        passengerName: session.passengerName,
-        passengerAge: session.passengerAge!,
-        passengerGender: session.passengerGender!,
-        passengerContact: session.passengerContact!,
-        status: 'PENDING',
+        ...createBookingDto,
+        customerId: customerId,
+        passenger: createBookingDto.passenger as any,
+      },
+      include: {
+        Trip: true,
+        Payment: true,
+        TicketPDF: true,
       },
     });
 
-    const payment = await this.paymentService.createPendingPayment({
-      bookingId: booking.id,
-      customerId: session.customerId,
-      price,
-    });
-
-    await this.sessionService.deleteSession(sessionId);
-
-    const bankName = process.env.PAYMENT_BANK_NAME || 'بنك الخرطين';
-    const accountNumber = process.env.PAYMENT_ACCOUNT_NUMBER || '1234567890';
-    const instructions =
-      process.env.PAYMENT_INSTRUCTIONS || 'يرجى تحويل المبلغ';
-
-    return {
-      booking,
-      payment,
-      paymentInstructions: {
-        bankName: session.bankName || bankName,
-        accountNumber: session.bankAccountNumber || accountNumber,
-        instructions: session.paymentInstructions || instructions,
-        amount: price,
-        currency: 'SDG',
-        bookingId: booking.id,
-        paymentId: payment.id,
-      },
-    };
+    return booking;
   }
 
-  async getMyBookings(customerId: string) {
+  async getBookedSeats(tripId: string): Promise<number[]> {
+    const bookings = await this.prisma.booking.findMany({
+      where: {
+        tripId,
+        status: {
+          in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+        },
+      },
+      select: {
+        seatNumbers: true,
+      },
+    });
+
+    const bookedSeats = bookings.flatMap((booking: any) => booking.seatNumbers);
+
+    // Flatten the array of seat numbers
+    return bookedSeats;
+  }
+
+  async getBookings() {
     return this.prisma.booking.findMany({
-      where: { customerId },
       include: {
-        trip: { include: { bus: true } },
-        payment: true,
-        ticketPDF: true,
+        Trip: { include: { Bus: true } },
+        Payment: true,
+        TicketPDF: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: 'asc' },
     });
   }
 
-  async getBookingById(id: string, customerId: string) {
-    const booking = await this.prisma.booking.findFirst({
-      where: { id, customerId },
+  async getBookingsByProperties(
+    property1: string,
+    value1: string,
+    property2: string,
+    value2: string,
+  ) {
+    return this.prisma.booking.findMany({
+      where: {
+        AND: [{ [property1]: value1 }, { [property2]: value2 }],
+      },
       include: {
-        trip: { include: { bus: true } },
-        payment: true,
-        ticketPDF: true,
-        customer: true,
+        Trip: { include: { Bus: true } },
+        Payment: true,
+        TicketPDF: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async getBookingsByProperty(property: string, value: string) {
+    const whereClause: any = {};
+    whereClause[property] = value;
+
+    return this.prisma.booking.findMany({
+      where: whereClause,
+      include: {
+        Trip: { include: { Bus: true } },
+        Payment: true,
+        TicketPDF: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async getBooking(property: string, value: string) {
+    const whereClause: any = {};
+    whereClause[property] = value;
+
+    const booking = await this.prisma.booking.findFirst({
+      where: whereClause,
+      include: {
+        Trip: { include: { Bus: true } },
+        Payment: true,
+        TicketPDF: true,
       },
     });
 
@@ -137,5 +142,111 @@ export class BookingService {
     }
 
     return booking;
+  }
+
+  async getBookingByProperties(
+    property1: string,
+    value1: string,
+    property2: string,
+    value2: string,
+  ) {
+    const booking = await this.prisma.booking.findFirst({
+      where: {
+        AND: [{ [property1]: value1 }, { [property2]: value2 }],
+      },
+      include: {
+        Trip: { include: { Bus: true } },
+        Payment: true,
+        TicketPDF: true,
+      },
+    });
+
+    if (!booking) {
+      throw new NotFoundException('الحجز غير موجود');
+    }
+
+    return booking;
+  }
+
+  async update(id: string, updateBookingDto: UpdateBookingDto) {
+    // Check if booking exists
+    const existingBooking = await this.prisma.booking.findUnique({
+      where: { id },
+    });
+
+    if (!existingBooking) {
+      throw new NotFoundException('الحجز غير موجود');
+    }
+
+    // If updating seatNumbers, check if new seat is already booked for this trip
+    if (updateBookingDto.seatNumbers && updateBookingDto.tripId) {
+      const conflictingBooking = await this.prisma.booking.findFirst({
+        where: {
+          id: { not: id },
+          tripId: updateBookingDto.tripId,
+          seatNumbers: {
+            hasSome: updateBookingDto.seatNumbers, // ✅ Check for overlapping seats
+          },
+          status: {
+            in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+          },
+        },
+      });
+
+      if (conflictingBooking) {
+        throw new BadRequestException('المقعد محجوز بالفعل');
+      }
+    }
+
+    const updateData: {
+      passenger?: any;
+      customerId?: string;
+      tripId?: string;
+      seatNumbers?: number[];
+      passengerContact?: string;
+      status?: BookingStatus;
+    } = {};
+
+    if (updateBookingDto.passenger !== undefined)
+      updateData.passenger = updateBookingDto.passenger;
+    if (updateBookingDto.customerId !== undefined)
+      updateData.customerId = updateBookingDto.customerId;
+    if (updateBookingDto.tripId !== undefined)
+      updateData.tripId = updateBookingDto.tripId;
+    if (updateBookingDto.seatNumbers !== undefined)
+      updateData.seatNumbers = updateBookingDto.seatNumbers;
+    if (updateBookingDto.passengerContact !== undefined)
+      updateData.passengerContact = updateBookingDto.passengerContact;
+    if (updateBookingDto.status !== undefined)
+      updateData.status = updateBookingDto.status;
+
+    const updatedBooking = await this.prisma.booking.update({
+      where: { id },
+      data: updateData,
+      include: {
+        Trip: { include: { Bus: true } },
+        Payment: true,
+        TicketPDF: true,
+      },
+    });
+
+    return updatedBooking;
+  }
+
+  async delete(id: string) {
+    // Check if booking exists
+    const existingBooking = await this.prisma.booking.findUnique({
+      where: { id },
+    });
+
+    if (!existingBooking) {
+      throw new NotFoundException('الحجز غير موجود');
+    }
+
+    await this.prisma.booking.delete({
+      where: { id },
+    });
+
+    return { message: 'تم حذف الحجز بنجاح' };
   }
 }

@@ -36,7 +36,7 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
 
   get bus() { return this.prisma.bus; }
   get trip() { return this.prisma.trip; }
-  get user() { return this.prisma.user; }
+  get users() { return this.prisma.users; }
   get booking() { return this.prisma.booking; }
   get payment() { return this.prisma.payment; }
   get ticketPDF() { return this.prisma.ticketPDF; }

@@ -14,15 +14,10 @@ export class CreateTripDto {
   @IsNotEmpty({ message: 'معرف الحافلة لا يمكن أن يكون فارغاً' })
   busId: string;
 
-  @ApiProperty({ description: 'وقت الحضور' })
-  @IsDateString({}, { message: 'وقت الحضور يجب أن يكون تاريخاً صالحاً' })
-  @IsNotEmpty({ message: 'وقت الحضور مطلوب' })
-  presenceTime: string;
-
   @ApiProperty({ description: 'تاريخ المغادرة' })
   @IsDateString({}, { message: 'تاريخ المغادرة يجب أن يكون تاريخاً صالحاً' })
   @IsNotEmpty({ message: 'تاريخ المغادرة مطلوب' })
-  departureDate: string;
+  departureDate: Date;
 
   @ApiProperty({ description: 'وقت المغادرة' })
   @IsDateString({}, { message: 'وقت المغادرة يجب أن يكون تاريخاً صالحاً' })
@@ -52,7 +47,7 @@ export class CreateTripDto {
   @ApiProperty({ description: 'تاريخ وصول' })
   @IsDateString({}, { message: 'تاريخ وصول يجب أن يكون تاريخاً صالحاً' })
   @IsNotEmpty({ message: 'تاريخ وصول مطلوب' })
-  arrivalDate: string;
+  arrivalDate: Date;
 
   @ApiProperty({ description: 'الولاية arrival' })
   @IsString({ message: 'الولاية arrival يجب أن تكون نصاً' })
@@ -88,7 +83,7 @@ export class UpdateTripDto {
   busId?: string;
 
   @ApiProperty({ description: 'وقت الحضور' })
-  @IsDateString({}, { message: 'وقت الحضور يجب أن يكون تاريخاً صالحاً' })
+  @IsString({ message: 'وقت الحضور يجب أن يكون نصاً' })
   @IsOptional()
   presenceTime?: string;
 

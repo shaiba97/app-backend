@@ -24,12 +24,12 @@ export class UsersController {
 
   @Post('post-login')
   @UseGuards(AuthGuard('local'))
-  async login(@Req() req: any) {
+  login(@Req() req: any) {
     return this.usersService.login(req.user);
   }
 
   @Post('logout')
-  async logout(@Req() req: any) {
+  logout(@Req() req: any) {
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.split(' ')[1];

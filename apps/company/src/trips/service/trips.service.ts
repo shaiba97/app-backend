@@ -28,18 +28,19 @@ export class TripsService {
     const trip = await this.prisma.trip.create({
       data: {
         busId: createTripDto.busId,
-        presence_time: new Date(createTripDto.presenceTime),
-        departureDate: new Date(createTripDto.departureDate),
-        departureTime: new Date(createTripDto.departureTime),
+        departureDate: createTripDto.departureDate,
+        departureTime: createTripDto.departureTime,
+        presence_time: 'قبل ساعة',
         fromState: createTripDto.fromState,
         fromCity: createTripDto.fromCity,
         fromStation: createTripDto.fromStation,
-        arrivalTime: new Date(createTripDto.arrivalTime),
-        arrivalDate: new Date(createTripDto.arrivalDate),
+        arrivalTime: createTripDto.arrivalTime,
+        arrivalDate: createTripDto.arrivalDate,
         toState: createTripDto.toState,
         toCity: createTripDto.toCity,
         toStation: createTripDto.toStation,
         status: (createTripDto.status as any) || 'SCHEDULED',
+        price: createTripDto.price,
       },
     });
 
@@ -53,7 +54,7 @@ export class TripsService {
   async getTrips() {
     return this.prisma.trip.findMany({
       include: {
-        bus: true,
+        Bus: true,
       },
     });
   }
@@ -62,16 +63,94 @@ export class TripsService {
     return this.prisma.trip.findMany({
       where: { [property]: value },
       include: {
-        bus: true,
+        Bus: true,
       },
     });
+  }
+
+  // async searchTrips(searchCriteria: {
+  //   fromCity: string;
+  //   toCity: string;
+  //   departureDate: any | Date;
+  // }) {
+  //   const trips = await this.prisma.trip.findMany({
+  //     where: {
+  //       fromCity: searchCriteria.fromCity,
+  //       toCity: searchCriteria.toCity,
+  //       departureDate: {
+  //         gte: new Date(searchCriteria.departureDate),
+  //       },
+  //     },
+  //     include: {
+  //       bus: true,
+  //     },
+  //     orderBy: [{ departureDate: 'asc' }],
+  //   });
+
+  //   console.log(trips);
+
+  //   return {
+  //     success: true,
+  //     message: `تم العثور على ${trips.length} رحلة`,
+  //     data: trips,
+  //     count: trips.length,
+  //   };
+  // }
+
+  async searchTrips(searchCriteria: {
+    fromCity?: string;
+    toCity?: string;
+    departureDate?: string | Date;
+  }) {
+    // 1. Initialize an empty filter object
+    const where: any = {};
+
+    // 2. Only add filters if the values actually exist
+    if (searchCriteria.fromCity) {
+      where.fromCity = searchCriteria.fromCity;
+    }
+
+    if (searchCriteria.toCity) {
+      where.toCity = searchCriteria.toCity;
+    }
+
+    // 3. Robust Date Validation
+    if (searchCriteria.departureDate) {
+      const parsedDate = new Date(searchCriteria.departureDate);
+      // Only add to 'where' if the date is actually a valid date
+      if (!isNaN(parsedDate.getTime())) {
+        where.departureDate = {
+          gte: parsedDate,
+          // Optional: match only within that specific day
+          lt: new Date(parsedDate.getTime() + 24 * 60 * 60 * 1000),
+        };
+      }
+    }
+
+    // 4. Run the query with the dynamically built 'where' object
+    const trips = await this.prisma.trip.findMany({
+      where: {
+        AND: [where],
+      },
+      include: {
+        Bus: true,
+      },
+      orderBy: [{ departureDate: 'asc' }],
+    });
+
+    return {
+      success: true,
+      message: `تم العثور على ${trips.length} رحلة`,
+      data: trips,
+      count: trips.length,
+    };
   }
 
   async getTrip(property: string, value: string) {
     const trip = await this.prisma.trip.findFirst({
       where: { [property]: value },
       include: {
-        bus: true,
+        Bus: true,
       },
     });
 
@@ -99,25 +178,12 @@ export class TripsService {
       }
     }
 
-    const updateData: Partial<{
-      busId: string;
-      presence_time: Date;
-      departureDate: Date;
-      departureTime: Date;
-      fromState: string;
-      fromCity: string;
-      fromStation: string;
-      arrivalTime: Date;
-      arrivalDate: Date;
-      toState: string;
-      toCity: string;
-      toStation: string;
-    }> = {};
+    const updateData: any = {};
 
     if (updateTripDto.busId !== undefined)
       updateData.busId = updateTripDto.busId;
     if (updateTripDto.presenceTime !== undefined)
-      updateData.presence_time = new Date(updateTripDto.presenceTime);
+      updateData.presence_time = updateTripDto.presenceTime;
     if (updateTripDto.departureDate !== undefined)
       updateData.departureDate = new Date(updateTripDto.departureDate);
     if (updateTripDto.departureTime !== undefined)
@@ -129,9 +195,9 @@ export class TripsService {
     if (updateTripDto.fromStation !== undefined)
       updateData.fromStation = updateTripDto.fromStation;
     if (updateTripDto.arrivalTime !== undefined)
-      updateData.arrivalTime = new Date(updateTripDto.arrivalTime);
+      updateData.arrivalTime = updateTripDto.arrivalTime;
     if (updateTripDto.arrivalDate !== undefined)
-      updateData.arrivalDate = new Date(updateTripDto.arrivalDate);
+      updateData.arrivalDate = updateTripDto.arrivalDate;
     if (updateTripDto.toState !== undefined)
       updateData.toState = updateTripDto.toState;
     if (updateTripDto.toCity !== undefined)
@@ -143,7 +209,7 @@ export class TripsService {
       where: { id },
       data: updateData,
       include: {
-        bus: true,
+        Bus: true,
       },
     });
 

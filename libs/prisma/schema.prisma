@@ -11,7 +11,7 @@ datasource db {
 model Bus {
   id            String        @id @default(uuid())
   companyId     String
-  company       User          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  Company       users         @relation(fields: [companyId], references: [id], onDelete: Cascade)
   name          String
   /// Total number of passenger seats
   chairs        Int
@@ -30,26 +30,26 @@ model Bus {
   plate         Json
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
-  trips         Trip[]
+  Trip          Trip[]
 }
 
 model Trip {
   id            String   @id @default(uuid())
 
   busId         String
-  bus           Bus      @relation(fields: [busId], references: [id], onDelete: Cascade)
+  Bus           Bus      @relation(fields: [busId], references: [id], onDelete: Cascade)
 
-  presence_time DateTime
+  presence_time String
 
   // SEARCHABLE FIELDS (CRITICAL)
   departureDate DateTime
-  departureTime DateTime
+  departureTime String
   fromState     String
   fromCity      String
   fromStation   String
 
   // ARRIVAL FIELDS
-  arrivalTime   DateTime
+  arrivalTime   String
   arrivalDate   DateTime
   toState       String
   toCity        String
@@ -65,13 +65,13 @@ model Trip {
 
 
 
-  bookings      Booking[]
+  Booking       Booking[]
 
   @@index([fromCity, toCity])
   @@index([departureDate])
 }
 
-model User {
+model users {
   id        String    @id @default(uuid())
   name      String
   email     String    @unique
@@ -79,36 +79,34 @@ model User {
   role      Role
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  bookings  Booking[]
-  payments  Payment[]
-  buses     Bus[]
+  Booking   Booking[]
+  Payment   Payment[]
+  Bus       Bus[]
 
   @@index([email])
-  @@map("users")
 }
 
 model Booking {
   id               String        @id @default(uuid())
   customerId       String
   tripId           String
-  seatNumber       Int
-  passengerName    String
-  passengerAge     Int
-  passengerGender  Gender
+  seatNumbers      Int[]
+  passenger        Json
   passengerContact String
   status           BookingStatus @default(PENDING)
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
-  customer         User          @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  trip             Trip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  payment          Payment?
-  ticketPDF        TicketPDF?
+  Customer         users         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  Trip             Trip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  Payment          Payment?
+  TicketPDF        TicketPDF?
 }
 
 model Payment {
   id                String        @id @default(uuid())
   bookingId         String        @unique
   customerId        String
+  price             Decimal?      @db.Decimal(10, 2)
   totalAmount       Decimal       @db.Decimal(10, 2)
   companyAmount     Decimal       @db.Decimal(10, 2)
   commissionAmount  Decimal       @db.Decimal(10, 2)
@@ -120,16 +118,20 @@ model Payment {
   paidAt            DateTime?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
-  booking           Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  customer          User          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  receiptFile       String?
+  transactionId     String?       @unique
+  Booking           Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  Customer          users         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
 }
+
 
 model TicketPDF {
   id          String   @id @default(uuid())
   bookingId   String   @unique
   ticketUrl   String
   generatedAt DateTime @default(now())
-  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  Booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 }
 
 enum SeatStartFrom {

@@ -3,32 +3,16 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { PrismaService } from '@app/prisma';
 
-interface BookingWithTripAndBus {
-  id: string;
-  seatNumber: number;
-  passengerName: string;
-  passengerGender: 'MALE' | 'FEMALE';
-  trip: {
-    fromCity: string;
-    fromStation: string;
-    toCity: string;
-    toStation: string;
-    departureDate: Date;
-    departureTime: Date;
-    bus?: {
-      name: string;
-    };
-  } | null;
-}
-
 @Injectable()
 export class PDFService {
   private readonly logger = new Logger(PDFService.name);
-  private outputDir = './uploads/tickets';
+  private outputDir = './upload';
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async generateTicket(bookingId: string): Promise<string> {
+  async generateTicket(
+    bookingId: string,
+  ): Promise<{ publicUrl: string; filePath: string }> {
     const outputDir = path.resolve(this.outputDir);
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
@@ -36,11 +20,11 @@ export class PDFService {
 
     const filename = `ticket_${bookingId}.pdf`;
     const outputPath = path.join(outputDir, filename);
-    const publicUrl = `/uploads/tickets/${filename}`;
+    const publicUrl = `/upload/${filename}`;
 
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
-      include: { trip: { include: { bus: true } }, customer: true },
+      include: { Trip: { include: { Bus: true } } },
     });
 
     if (!booking) {
@@ -73,12 +57,29 @@ export class PDFService {
       fs.writeFileSync(outputPath, 'PDF placeholder');
     }
 
-    return publicUrl;
+    return { publicUrl, filePath: outputPath };
   }
 
-  private buildTicketHTML(booking: BookingWithTripAndBus): string {
-    const trip = booking.trip;
-    const bus = trip?.bus;
+  private buildTicketHTML(booking: any): string {
+    const trip = booking.Trip;
+    const bus = trip?.Bus;
+
+    const passenger = Array.isArray(booking.passenger)
+      ? booking.passenger
+      : [booking.passenger];
+
+    const passengerRows = passenger
+      .map(
+        (p: any, i: number) => `
+        <tr style="border-bottom:1px solid #E8E0D8">
+          <td style="padding:8px 12px;text-align:right;font-family:Tajawal,sans-serif">${i + 1}</td>
+          <td style="padding:8px 12px;text-align:right;font-family:Tajawal,sans-serif">${p.name ?? '--'}</td>
+          <td style="padding:8px 12px;text-align:right;font-family:Tajawal,sans-serif">${p.age ?? '--'}</td>
+          <td style="padding:8px 12px;text-align:right;font-family:Tajawal,sans-serif">${p.gender === 'MALE' ? 'ذكر' : 'أنثى'}</td>
+        </tr>
+      `,
+      )
+      .join('');
 
     return `
 <!DOCTYPE html>
@@ -108,11 +109,14 @@ body { font-family: 'Tajawal', sans-serif; background: #f5f7fa; padding: 20px; d
 .booking-id { text-align: center; font-size: 12px; color: #9CA3AF; }
 .booking-id span { font-family: monospace; font-size: 11px; }
 .ticket-footer { background: #F5EFEA; padding: 16px 24px; text-align: center; font-size: 12px; color: #6B7280; }
+table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+th { background: #F5EFEA; color: #6E472D; font-size: 11px; padding: 8px 12px; text-align: right; font-family: Tajawal, sans-serif; }
+td { font-family: Tajawal, sans-serif; }
 </style>
 </head>
 <body>
 <div class="ticket">
-<div class="ticket-header"><h1>🚌 رحلة</h1><p>تذكرة سفر — Bus Ticket</p></div>
+<div class="ticket-header"><h1>رحلة</h1><p>تذكرة سفر — Bus Ticket</p></div>
 <div class="ticket-body">
 <div class="route-section">
 <div class="route-city"><div class="city-name">${trip?.fromCity || '—'}</div><div class="city-sub">${trip?.fromStation || ''}</div></div>
@@ -121,13 +125,16 @@ body { font-family: 'Tajawal', sans-serif; background: #f5f7fa; padding: 20px; d
 </div>
 <div class="seat-badge">${booking.seatNumber}</div>
 <div class="info-grid">
-<div class="info-item"><div class="label">اسم المسافر</div><div class="value">${booking.passengerName}</div></div>
 <div class="info-item"><div class="label">رقم المقعد</div><div class="value">${booking.seatNumber}</div></div>
 <div class="info-item"><div class="label">تاريخ السفر</div><div class="value">${trip?.departureDate ? new Date(trip.departureDate).toLocaleDateString('ar-SD') : '—'}</div></div>
 <div class="info-item"><div class="label">وقت الانطلاق</div><div class="value">${trip?.departureTime ? new Date(trip.departureTime).toLocaleTimeString('ar-SD') : '—'}</div></div>
 <div class="info-item"><div class="label">الحافلة</div><div class="value">${bus?.name || '—'}</div></div>
-<div class="info-item"><div class="label">الجنس</div><div class="value">${booking.passengerGender === 'MALE' ? 'ذكر' : 'أنثى'}</div></div>
 </div>
+<p style="font-size:12px;font-weight:700;color:#1F2937;margin-bottom:8px">بيانات الركاب</p>
+<table>
+<thead><tr><th>#</th><th>الاسم</th><th>العمر</th><th>الجنس</th></tr></thead>
+<tbody>${passengerRows}</tbody>
+</table>
 <hr class="divider">
 <div class="booking-id">رقم الحجز<br><span>${booking.id}</span></div>
 </div>

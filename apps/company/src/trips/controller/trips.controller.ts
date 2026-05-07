@@ -8,19 +8,19 @@ import {
   HttpCode,
   HttpStatus,
   Put,
-  UseGuards,
+  // UseGuards,
   Req,
+  // UnauthorizedException,
 } from '@nestjs/common';
+// import { AuthGuard } from '@nestjs/passport';
 import { TripsService } from '../service/trips.service';
 import { CreateTripDto, UpdateTripDto } from '../dto/trips.dto';
-import { JwtAuthGuard } from '@app/auth';
 
 @Controller('trips')
 export class TripsController {
   constructor(private readonly tripsService: TripsService) {}
 
   @Post('post-trip')
-  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   async create(@Req() req: any, @Body() createTripDto: CreateTripDto) {
     return this.tripsService.create(createTripDto);
@@ -46,18 +46,21 @@ export class TripsController {
   ) {
     return this.tripsService.getTrip(property, value);
   }
-  // @Get('search-trip')
-  // async searchTrip(@Query() query: any) {
-  //   return this.tripsService.searchTrip(query);
-  // }
 
-  // @Post('search-trip')
-  // async searchTripPost(@Body() searchCriteria: any) {
-  //   return this.tripsService.searchTrip(searchCriteria);
-  // }
+  @Post('search-trips')
+  @HttpCode(HttpStatus.OK)
+  async searchTrips(
+    @Body()
+    searchCriteria: {
+      fromCity: string;
+      toCity: string;
+      departureDate: any;
+    },
+  ) {
+    return this.tripsService.searchTrips(searchCriteria);
+  }
 
   @Put('update-trip/:id')
-  @UseGuards(JwtAuthGuard)
   async update(
     @Req() req: any,
     @Param('id') id: string,
@@ -67,7 +70,6 @@ export class TripsController {
   }
 
   @Delete('delete-trip/:id')
-  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async remove(@Req() req: any, @Param('id') id: string) {
     return this.tripsService.remove(id);

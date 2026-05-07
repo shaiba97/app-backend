@@ -8,22 +8,27 @@ import {
   HttpCode,
   HttpStatus,
   Put,
-  UseGuards,
+  // UseGuards,
   Req,
+  // UnauthorizedException,
 } from '@nestjs/common';
+// import { AuthGuard } from '@nestjs/passport';
 import { BusesService } from '../service/buses.service';
 import { CreateBusDto, UpdateBusDto } from '../dto/bus.dto';
-import { JwtAuthGuard } from '@app/auth';
 
 @Controller('buses')
 export class BusesController {
   constructor(private readonly busesService: BusesService) {}
 
   @Post('post-bus')
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(AuthGuard('local'))
   @HttpCode(HttpStatus.CREATED)
   async create(@Req() req: any, @Body() createBusDto: CreateBusDto) {
-    return this.busesService.create(createBusDto, req.user?.id);
+    console.log(req.user);
+    return this.busesService.create(
+      createBusDto,
+      '5d35cf9e-225f-4655-8037-070c001ff8a6',
+    );
   }
 
   @Get('get-buses')
@@ -47,30 +52,15 @@ export class BusesController {
     return this.busesService.getBus(property, value);
   }
 
-  // @Get('search-bus')
-  // async searchBus(@Query() query: any) {
-  //   return this.busesService.searchBus(query);
-  // }
-
-  // @Post('search-bus')
-  // async searchBusPost(@Body() searchCriteria: any) {
-  //   return this.busesService.searchBus(searchCriteria);
-  // }
-
   @Put('update-bus/:id')
-  @UseGuards(JwtAuthGuard)
-  async update(
-    @Req() req: any,
-    @Param('id') id: string,
-    @Body() updateBusDto: UpdateBusDto,
-  ) {
-    return this.busesService.update(id, updateBusDto, req.user?.id);
+  @HttpCode(HttpStatus.OK)
+  async update(@Param('id') id: string, @Body() updateBusDto: UpdateBusDto) {
+    return this.busesService.update(id, updateBusDto);
   }
 
   @Delete('delete-bus/:id')
-  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async remove(@Req() req: any, @Param('id') id: string) {
-    return this.busesService.remove(id, req.user?.id);
+  async remove(@Param('id') id: string) {
+    return this.busesService.remove(id);
   }
 }

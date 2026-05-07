@@ -1,135 +1,259 @@
-import { Controller, Post, Get, Body, Param, Req } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  // Req,
+  // HttpStatus,
+  BadRequestException,
+  UseInterceptors,
+  Put,
+  Delete,
+  UploadedFile,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
+import * as multer from 'multer';
+import * as path from 'path';
+import * as fs from 'fs';
 import { BookingService } from '../service/booking.service';
+import { PaymentService } from '../service/payment.service';
+import {
+  CreateBookingDto,
+  UpdateBookingDto,
+  CreatePaymentDto,
+  UpdatePaymentDto,
+} from '../dto/booking.dto';
 
-interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-  };
+const receiptsDir = path.resolve('./uploads/receipts');
+if (!fs.existsSync(receiptsDir)) {
+  fs.mkdirSync(receiptsDir, { recursive: true });
 }
 
-@Controller('booking')
+const receiptStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, receiptsDir);
+  },
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const name = `receipt_${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`;
+    cb(null, name);
+  },
+});
+
+const receiptFileFilter = (
+  _req: Express.Request,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback,
+) => {
+  const allowed = [
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/webp',
+    'image/heic',
+  ];
+  if (allowed.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('نوع الملف غير مدعوم — يرجى رفع صورة (jpg, png, webp)'));
+  }
+};
+
+const uploadInterceptor = FileInterceptor('receiptFile', {
+  storage: receiptStorage,
+  fileFilter: receiptFileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
+
+// interface AuthenticatedRequest extends Request {
+//   user?: {
+//     id: string;
+//     email: string;
+//     name: string;
+//     role: string;
+//   };
+//   file?: Express.Multer.File;
+// }
+
+@Controller('bookings')
 export class BookingController {
-  constructor(private readonly bookingService: BookingService) {}
+  constructor(
+    private readonly bookingService: BookingService,
+    private readonly paymentService: PaymentService,
+    // private readonly sessionService: SessionService,
+  ) {}
 
-  @Post('session/start')
-  async startSession(
-    @Req() req: AuthenticatedRequest,
-    @Body() body: { tripId: string; seatNumber: number; customerId?: string },
-  ) {
-    const customerId = body.customerId || req.user?.id;
-    if (!customerId) {
-      return { message: 'يرجى تسجيل الدخول أولاً', statusCode: 401 };
-    }
-    const session = await this.bookingService.startSession({
-      customerId,
-      tripId: body.tripId,
-      seatNumber: body.seatNumber,
-    });
-    return {
-      message: 'تم حجز الجلسة بنجاح',
-      sessionId: session.sessionId,
-      data: session,
-    };
+  private customerId = '0281279d-9ccb-47a9-add4-aa41c726b548';
+
+  @Post('create-booking')
+  createBooking(@Body() dto: CreateBookingDto) {
+    return this.bookingService.create(dto, this.customerId);
   }
 
-  @Post('session/passenger')
-  async addPassenger(
-    @Req() req: AuthenticatedRequest,
-    @Body()
-    body: {
-      sessionId: string;
-      passengerName: string;
-      passengerAge: number;
-      passengerGender: 'MALE' | 'FEMALE';
-      passengerContact: string;
-      customerId?: string;
-    },
+  @Get('get-booked-seats/tripId/:tripId')
+  async getBookedSats(@Param('tripId') tripId: string) {
+    return await this.bookingService.getBookedSeats(tripId);
+  }
+
+  // @Get('bookings/select-seat/customerId/:customerId/tripId/:tripId')
+  @Get('get-bookings')
+  async getBookings() {
+    return await this.bookingService.getBookings();
+  }
+
+  @Get(
+    'get-bookings-by-properties/property1/:property1/value1/:value1/property2/:property2/value2/:value2',
+  )
+  async getBookingsByProperties(
+    @Param('property1') property1: string,
+    @Param('value1') value1: string,
+    @Param('property2') property2: string,
+    @Param('value2') value2: string,
   ) {
-    const customerId = body.customerId || req.user?.id;
-    if (!customerId) {
-      return { message: 'يرجى تسجيل الدخول أولاً', statusCode: 401 };
-    }
-    const session = await this.bookingService.addPassenger(
-      body.sessionId,
-      customerId,
-      {
-        passengerName: body.passengerName,
-        passengerAge: body.passengerAge,
-        passengerGender: body.passengerGender,
-        passengerContact: body.passengerContact,
-      },
+    return await this.bookingService.getBookingsByProperties(
+      property1,
+      value1,
+      property2,
+      value2,
     );
-    return {
-      message: 'تم حفظ بيانات المسافر',
-      data: session,
-    };
   }
 
-  @Get('session/:sessionId/summary')
-  async getSessionSummary(
-    @Param('sessionId') sessionId: string,
-    @Req() req: AuthenticatedRequest,
+  @Get('get-bookings-by-property/property/:property/value/:value')
+  async getBookingsByProperty(
+    @Param('property') property: string,
+    @Param('value') value: string,
   ) {
-    const customerId = (req.query?.customerId as string) || req.user?.id;
-    if (!customerId) {
-      return {
-        message: 'يرجى تسجيل الدخول أولاً',
-        statusCode: 401,
-        status: false,
-      };
-    }
-    const summary = await this.bookingService.getSessionSummary(
-      sessionId,
-      customerId,
-    );
-    return { data: summary };
+    return await this.bookingService.getBookingsByProperty(property, value);
   }
 
-  @Post('session/confirm')
-  async confirmBooking(
-    @Req() req: AuthenticatedRequest,
-    @Body() body: { sessionId: string; customerId?: string },
+  @Get('get-booking/property/:property/value/:value')
+  async getBooking(
+    @Param('property') property: string,
+    @Param('value') value: string,
   ) {
-    const customerId = body.customerId || req.user?.id;
-    if (!customerId) {
-      return {
-        message: 'يرجى تسجيل الدخول أولاً',
-        statusCode: 401,
-        status: false,
-      };
-    }
-    const result = await this.bookingService.confirmBooking(
-      body.sessionId,
-      customerId,
+    return await this.bookingService.getBooking(property, value);
+  }
+
+  @Get(
+    'get-booking-by-properties/property1/:property1/value1/:value1/property2/:property2/value2/:value2',
+  )
+  async getBookingByProperties(
+    @Param('property1') property1: string,
+    @Param('value1') value1: string,
+    @Param('property2') property2: string,
+    @Param('value2') value2: string,
+  ) {
+    return await this.bookingService.getBookingByProperties(
+      property1,
+      value1,
+      property2,
+      value2,
     );
-    return { message: 'تم إنشاء الحجز بنجاح', data: result };
   }
 
-  @Get('my-bookings')
-  async getMyBookings(@Req() req: AuthenticatedRequest) {
-    const customerId = req.user?.id;
-    if (!customerId) {
-      return {
-        message: 'يرجى تسجيل الدخول أولاً',
-        success: false,
-        statusCode: 401,
-      };
+  @Put('update-booking/:id')
+  async updateBooking(@Param('id') id: string, @Body() body: UpdateBookingDto) {
+    return await this.bookingService.update(id, body);
+  }
+
+  @Delete('delete-booking/:id')
+  async deleteBooking(@Param('id') id: string) {
+    return await this.bookingService.delete(id);
+  }
+
+  // Payment CRUD Endpoints
+  @Post('create-payment')
+  @UseInterceptors(uploadInterceptor)
+  async createPayment(
+    @Body() dto: CreatePaymentDto,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException('صورة الإيصال مطلوبة');
     }
-    const bookings = await this.bookingService.getMyBookings(customerId);
-    return { data: bookings };
+
+    const receiptFile = `/uploads/receipts/${file.filename}`;
+    const paymentData = { ...dto, receiptFile };
+
+    return await this.paymentService.create(paymentData);
   }
 
-  @Get(':id')
-  async getBookingById(
+  @Get('get-payments')
+  async getPayments() {
+    return await this.paymentService.getPayments();
+  }
+
+  @Get('get-payments-by-property/property/:property/value/:value')
+  async getPaymentsByProperty(
+    @Param('property') property: string,
+    @Param('value') value: string,
+  ) {
+    return await this.paymentService.getPaymentsByProperty(property, value);
+  }
+
+  @Get('get-payment/property/:property/value/:value')
+  async getPayment(
+    @Param('property') property: string,
+    @Param('value') value: string,
+  ) {
+    return await this.paymentService.getPayment(property, value);
+  }
+
+  @Get(
+    'get-payment-by-properties/property1/:property1/value1/:value1/property2/:property2/value2/:value2',
+  )
+  async getPaymentByProperties(
+    @Param('property1') property1: string,
+    @Param('value1') value1: string,
+    @Param('property2') property2: string,
+    @Param('value2') value2: string,
+  ) {
+    return await this.paymentService.getPaymentByProperties(
+      property1,
+      value1,
+      property2,
+      value2,
+    );
+  }
+
+  @Get(
+    'get-payments-by-properties/property1/:property1/value1/:value1/property2/:property2/value2/:value2',
+  )
+  async getPaymentsByProperties(
+    @Param('property1') property1: string,
+    @Param('value1') value1: string,
+    @Param('property2') property2: string,
+    @Param('value2') value2: string,
+  ) {
+    return await this.paymentService.getPaymentsByProperties(
+      property1,
+      value1,
+      property2,
+      value2,
+    );
+  }
+
+  @Put('update-payment/:id')
+  @UseInterceptors(uploadInterceptor)
+  async updatePayment(
     @Param('id') id: string,
-    @Req() req: AuthenticatedRequest,
+    @Body() body: UpdatePaymentDto,
+    @UploadedFile() file: Express.Multer.File,
   ) {
-    const customerId = req.user?.id;
-    if (!customerId) {
-      return { message: 'يرجى تسجيل الدخول أولاً', statusCode: 401 };
+    const updateData = { ...body };
+
+    if (file) {
+      const receiptFile = `/uploads/receipts/${file.filename}`;
+      updateData.receiptFile = receiptFile;
     }
-    const booking = await this.bookingService.getBookingById(id, customerId);
-    return { data: booking };
+
+    return await this.paymentService.update(id, updateData);
+  }
+
+  @Delete('delete-payment/:id')
+  async deletePayment(@Param('id') id: string) {
+    return await this.paymentService.delete(id);
   }
 }

@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  ConflictException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   CreateBusDto,
   UpdateBusDto,
@@ -18,17 +13,24 @@ export class BusesService {
 
   async create(createBusDto: CreateBusDto, userId?: string) {
     if (!userId) {
-      throw new BadRequestException('User not authenticated');
+      return {
+        success: false,
+        message: 'المستخدم غير مصادق',
+      };
     }
 
     if (!createBusDto || !createBusDto.plate) {
-      throw new BadRequestException(
-        'بيانات الحافلة غير صالحة - plate field is missing',
-      );
+      return {
+        success: false,
+        message: 'بيانات الحافلة غير صالحة - حقل اللوحة مفقود',
+      };
     }
 
     if (!createBusDto.plate.numbers) {
-      throw new BadRequestException('رقم اللوحة مطلوب');
+      return {
+        success: false,
+        message: 'رقم اللوحة مطلوب',
+      };
     }
 
     const existingBus = await this.prisma.bus.findFirst({
@@ -40,25 +42,53 @@ export class BusesService {
       },
     });
 
+    console.log(
+      'Plate check for:',
+      createBusDto.plate.numbers,
+      '-> exists:',
+      existingBus !== null,
+    );
+
     if (existingBus) {
-      throw new ConflictException('رقم اللوحة موجود بالفعل');
+      return {
+        success: false,
+        message: 'رقم اللوحة موجود بالفعل',
+      };
     }
 
-    const bus = await this.prisma.bus.create({
-      data: {
-        companyId: userId,
-        name: createBusDto.name,
-        chairs: createBusDto.chairs,
-        seatStartFrom: createBusDto.seatStartFrom,
-        plate: createBusDto.plate,
-      },
-    });
+    try {
+      const bus = await this.prisma.bus.create({
+        data: {
+          companyId: userId,
+          name: createBusDto.name,
+          chairs: createBusDto.chairs,
+          seatStartFrom: createBusDto.seatStartFrom,
+          plate: {
+            arabic: createBusDto.plate.arabic,
+            english: createBusDto.plate.english,
+            numbers: createBusDto.plate.numbers,
+          },
+        },
+      });
 
-    return {
-      success: true,
-      message: 'تم إنشاء الحافلة بنجاح',
-      data: bus,
-    };
+      return {
+        success: true,
+        message: 'تم إنشاء الحافلة بنجاح',
+        data: bus,
+      };
+    } catch (error: any) {
+      console.error('Error creating bus:', error.message);
+      if (error.code === 'P2002') {
+        return {
+          success: false,
+          message: 'رقم اللوحة موجود بالفعل',
+        };
+      }
+      return {
+        success: false,
+        message: 'فشل في إنشاء الحافلة',
+      };
+    }
   }
 
   async getBuses() {
@@ -85,78 +115,78 @@ export class BusesService {
     // TODO: Implement search logic
   }
 
-  async update(id: string, updateBusDto: UpdateBusDto, userId?: string) {
-    if (!userId) {
-      throw new BadRequestException('User not authenticated');
-    }
+  async update(id: string, updateBusDto: UpdateBusDto) {
+    try {
+      const bus = await this.prisma.bus.findUnique({ where: { id } });
 
-    const bus = await this.prisma.bus.findUnique({ where: { id } });
+      if (!bus) {
+        return {
+          success: false,
+          message: 'الحافلة غير موجودة',
+        };
+      }
 
-    if (!bus) {
-      throw new NotFoundException('الحافلة غير موجودة');
-    }
-
-    if (bus.companyId !== userId) {
-      throw new BadRequestException('You can only update your own buses');
-    }
-
-    if (updateBusDto.plate) {
-      const existingBus = await this.prisma.bus.findFirst({
-        where: {
-          id: { not: id },
-          plate: {
-            path: ['numbers'],
-            equals: updateBusDto.plate.numbers,
+      if (updateBusDto.plate) {
+        const normalizedNumbers = updateBusDto.plate.numbers;
+        const existingBus = await this.prisma.bus.findFirst({
+          where: {
+            id: { not: id },
+            plate: {
+              path: ['numbers'],
+              equals: normalizedNumbers,
+            },
           },
-        },
+        });
+
+        if (existingBus) {
+          return {
+            success: false,
+            message: 'رقم اللوحة موجود بالفعل',
+          };
+        }
+      }
+
+      const updateData: {
+        name?: string;
+        chairs?: number;
+        seatStartFrom?: SeatStartFrom;
+        plate?: PlateDto;
+      } = {};
+
+      if (updateBusDto.name !== undefined) updateData.name = updateBusDto.name;
+      if (updateBusDto.chairs !== undefined)
+        updateData.chairs = updateBusDto.chairs;
+      if (updateBusDto.seatStartFrom !== undefined)
+        updateData.seatStartFrom = updateBusDto.seatStartFrom;
+      if (updateBusDto.plate !== undefined)
+        updateData.plate = updateBusDto.plate;
+
+      const updatedBus = await this.prisma.bus.update({
+        where: { id },
+        data: updateData,
       });
 
-      if (existingBus) {
-        throw new ConflictException('رقم اللوحة موجود بالفعل');
+      return {
+        success: true,
+        message: 'تم تحديث الحافلة بنجاح',
+        data: updatedBus,
+      };
+    } catch (error: any) {
+      console.error('Error updating bus:', error.message);
+      if (error.code === 'P2002') {
+        return {
+          success: false,
+          message: 'رقم اللوحة موجود بالفعل',
+        };
       }
+      return {
+        success: false,
+        message: 'فشل في تحديث الحافلة',
+      };
     }
-
-    const updateData: {
-      name?: string;
-      chairs?: number;
-      seatStartFrom?: SeatStartFrom;
-      plate?: PlateDto;
-    } = {};
-
-    if (updateBusDto.name !== undefined) updateData.name = updateBusDto.name;
-    if (updateBusDto.chairs !== undefined)
-      updateData.chairs = updateBusDto.chairs;
-    if (updateBusDto.seatStartFrom !== undefined)
-      updateData.seatStartFrom = updateBusDto.seatStartFrom;
-    if (updateBusDto.plate !== undefined) updateData.plate = updateBusDto.plate;
-
-    const updatedBus = await this.prisma.bus.update({
-      where: { id },
-      data: updateData,
-    });
-
-    return {
-      success: true,
-      message: 'تم تحديث الحافلة بنجاح',
-      data: updatedBus,
-    };
   }
 
-  async remove(id: string, userId?: string) {
-    if (!userId) {
-      throw new BadRequestException('User not authenticated');
-    }
-
-    const bus = await this.prisma.bus.findUnique({ where: { id } });
-
-    if (!bus) {
-      throw new NotFoundException('الحافلة غير موجودة');
-    }
-
-    if (bus.companyId !== userId) {
-      throw new BadRequestException('You can only delete your own buses');
-    }
-
+  async remove(id: string) {
     await this.prisma.bus.delete({ where: { id } });
 
     return {
