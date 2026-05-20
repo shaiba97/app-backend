@@ -12,6 +12,7 @@ export class PDFService {
 
   async generateTicket(
     bookingId: string,
+    paymentData?: any,
   ): Promise<{ publicUrl: string; filePath: string }> {
     const outputDir = path.resolve(this.outputDir);
     if (!fs.existsSync(outputDir)) {
@@ -22,16 +23,18 @@ export class PDFService {
     const outputPath = path.join(outputDir, filename);
     const publicUrl = `/upload/${filename}`;
 
-    const payment = await this.prisma.payment.findUnique({
-      where: { bookingId: bookingId },
-      include: {
-        Booking: {
-          include: {
-            Trip: { include: { Bus: true } },
+    const payment =
+      paymentData ??
+      (await this.prisma.payment.findUnique({
+        where: { bookingId: bookingId },
+        include: {
+          Booking: {
+            include: {
+              Trip: { include: { Bus: true } },
+            },
           },
         },
-      },
-    });
+      }));
 
     if (!payment) {
       throw new Error('الحجز غير موجود');
@@ -84,8 +87,6 @@ export class PDFService {
       ? booking?.passenger
       : [booking?.passenger ?? {}];
 
-    // ── Helpers ─────────────────────────────────────
-
     const fmtDate = (val: any): string => {
       if (!val) return '—';
       return new Date(val).toLocaleDateString('ar-SA', {
@@ -97,19 +98,12 @@ export class PDFService {
 
     const fmtTime = (val: any): string => {
       if (!val) return '—';
-
       const date = new Date();
-
-      // 2. Extract hours and minutes from the string (assuming HH:mm format)
-      // Example: "14:30" -> hours = 14, minutes = 30
       const [hours, minutes] = val.split(':').map(Number);
-
-      // 3. Set the time on our Date object
       date.setHours(hours);
       date.setMinutes(minutes);
       date.setSeconds(0);
       date.setMilliseconds(0);
-
       return new Date(date).toLocaleTimeString('ar-SA', {
         hour: '2-digit',
         minute: '2-digit',
@@ -117,7 +111,6 @@ export class PDFService {
       });
     };
 
-    // ── Bus plate ────────────────────────────────────
     const plate = bus?.plate
       ? typeof bus.plate === 'string'
         ? JSON.parse(bus.plate)
@@ -186,7 +179,6 @@ export class PDFService {
       `
       : '<span style="color:#5EEAD4;font-size:12px">—</span>';
 
-    // ── Passenger rows ───────────────────────────────
     const passengerRows = passengers
       .map(
         (p: any, i: number) => `
@@ -235,7 +227,6 @@ export class PDFService {
       )
       .join('');
 
-    // ── Payment method label ─────────────────────────
     const methodMap: Record<string, string> = {
       bankak: 'بنكك',
       fawry: 'فوري',
@@ -249,11 +240,8 @@ export class PDFService {
       ? Number(payment.totalAmount).toLocaleString('ar-SA')
       : '—';
 
-    const ticketPrice = Number(payment.price).toLocaleString('ar-SA');
-
-    const currency = payment?.currency ?? 'جنيه سوداني';
-
-    // ── Booking date ─────────────────────────────────
+    // const ticketPrice = Number(payment.price).toLocaleString('ar-SA');
+    const currency = 'جنيه سوداني';
     const bookingDate = fmtDate(booking.createdAt);
 
     return `
@@ -264,15 +252,11 @@ export class PDFService {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;600;700;800&display=swap');
-
-    /* ── Reset ── */
     *, *::before, *::after {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
     }
-
-    /* ── Base ── */
     body {
       font-family: 'Tajawal', sans-serif;
       background: #F0FDFA;
@@ -283,8 +267,6 @@ export class PDFService {
       padding: 24px;
       min-height: 100vh;
     }
-
-    /* ── Ticket shell ── */
     .ticket {
       background: #ffffff;
       border-radius: 16px;
@@ -296,8 +278,6 @@ export class PDFService {
       max-width: 720px;
       margin: 0 auto;
     }
-
-    /* ── HEADER ── */
     .ticket-header {
       background: linear-gradient(
         135deg, #0D9488 0%, #0F766E 100%
@@ -357,13 +337,9 @@ export class PDFService {
       color: rgba(255,255,255,0.90);
       letter-spacing: 0.5px;
     }
-
-    /* ── BODY ── */
     .ticket-body {
       padding: 32px 28px 24px;
     }
-
-    /* ── Section title ── */
     .section-title {
       font-size: 12px;
       font-weight: 700;
@@ -381,21 +357,15 @@ export class PDFService {
       height: 1px;
       background: #99F6E4;
     }
-
-    /* ── Section wrapper ── */
     .section {
       margin-bottom: 24px;
     }
-
-    /* ── Card ── */
     .card {
       background: #F0FDFA;
       border: 1px solid #99F6E4;
       border-radius: 12px;
       padding: 16px;
     }
-
-    /* ── BUS DETAILS ── */
     .bus-details {
       display: flex;
       align-items: center;
@@ -419,8 +389,6 @@ export class PDFService {
       align-items: flex-end;
       gap: 8px;
     }
-
-    /* ── TRIP DETAILS ── */
     .trip-section {
       display: grid;
       grid-template-columns: 1fr 40px 1fr;
@@ -496,8 +464,6 @@ export class PDFService {
       color: #0D9488;
       line-height: 1.2;
     }
-
-    /* ── TABLES ── */
     table {
       width: 100%;
       border-collapse: collapse;
@@ -518,8 +484,6 @@ export class PDFService {
       color: #ffffff;
       letter-spacing: 0.3px;
     }
-
-    /* ── PAYMENT TABLE ── */
     .payment-table tbody tr td:first-child {
       font-weight: 600;
       color: #0F766E;
@@ -538,15 +502,11 @@ export class PDFService {
       font-weight: 800;
       color: #0D9488 !important;
     }
-
-    /* ── DASHED DIVIDER ── */
     .dashed-divider {
       border: none;
       border-top: 2px dashed #99F6E4;
       margin: 24px 0;
     }
-
-    /* ── FOOTER ── */
     .ticket-footer {
       background: linear-gradient(
         135deg, #0D9488 0%, #0F766E 100%
@@ -570,9 +530,6 @@ export class PDFService {
 <body>
 <div class="ticket">
 
-  <!-- ══════════════════════════════════ -->
-  <!-- HEADER                            -->
-  <!-- ══════════════════════════════════ -->
   <div class="ticket-header">
     <div class="header-logo">
       <span class="header-logo-text">رحلة</span>
@@ -580,141 +537,71 @@ export class PDFService {
     <div class="header-sub">
       تذكرة سفر — Bus Ticket
     </div>
-    <div style="
-      font-size:11px;
-      color:rgba(255,255,255,0.65);
-      margin-top:6px;
-    ">
+    <div style="font-size:11px;color:rgba(255,255,255,0.65);margin-top:6px;">
       تاريخ الحجز: ${bookingDate}
     </div>
   </div>
 
-  <!-- ══════════════════════════════════ -->
-  <!-- BODY                              -->
-  <!-- ══════════════════════════════════ -->
   <div class="ticket-body">
 
-    <!-- ── BUS DETAILS ── -->
     <div class="section">
       <div class="section-title">تفاصيل الحافلة</div>
       <div class="card">
         <div class="bus-details">
-
-          <!-- Bus name + chairs -->
           <div>
-            <div class="bus-name">
-              ${bus?.name ?? '—'}
-            </div>
-            <div class="bus-meta">
-              عدد المقاعد: ${bus?.chairs ?? '—'} مقعد
-            </div>
+            <div class="bus-name">${bus?.name ?? '—'}</div>
+            <div class="bus-meta">عدد المقاعد: ${bus?.chairs ?? '—'} مقعد</div>
           </div>
-
-          <!-- Plate -->
           <div class="bus-right">
-            <div style="
-              font-size:10px;
-              color:#5EEAD4;
-              font-weight:600;
-              text-align:center;
-              margin-bottom:4px;
-              letter-spacing:0.5px;
-            ">
+            <div style="font-size:10px;color:#5EEAD4;font-weight:600;text-align:center;margin-bottom:4px;letter-spacing:0.5px;">
               رقم اللوحة
             </div>
             ${plateHTML}
           </div>
-
         </div>
       </div>
     </div>
 
-    <!-- ── TRIP DETAILS ── -->
     <div class="section">
       <div class="section-title">تفاصيل الرحلة</div>
       <div class="trip-section">
-
-        <!-- Departure (RIGHT in RTL) -->
         <div class="trip-side trip-side-departure">
           <div class="trip-label">المغادرة</div>
-          <div class="trip-state">
-            ${trip?.fromState ?? ''}
-          </div>
-          <div class="trip-city">
-            ${trip?.fromCity ?? '—'}
-          </div>
-          <div class="trip-station">
-            ${trip?.fromStation ?? ''}
-          </div>
+          <div class="trip-state">${trip?.fromState ?? ''}</div>
+          <div class="trip-city">${trip?.fromCity ?? '—'}</div>
+          <div class="trip-station">${trip?.fromStation ?? ''}</div>
           <div class="trip-time-block">
-            <div class="trip-date">
-              ${fmtDate(trip?.departureDate)}
-            </div>
-            <div class="trip-time">
-              ${fmtTime(trip?.departureTime)}
-            </div>
+            <div class="trip-date">${fmtDate(trip?.departureDate)}</div>
+            <div class="trip-time">${fmtTime(trip?.departureTime)}</div>
           </div>
         </div>
-
-        <!-- Arrow divider -->
         <div class="trip-divider">
           <div class="trip-divider-arrow">←</div>
         </div>
-
-        <!-- Arrival (LEFT in RTL) -->
-        <div class="trip-side trip-side-arrival"
-             style="text-align:left;direction:ltr;">
-          <div class="trip-label"
-               style="text-align:left">
-            الوصول
-          </div>
-          <div class="trip-state"
-               style="text-align:left">
-            ${trip?.toState ?? ''}
-          </div>
-          <div class="trip-city"
-               style="text-align:left">
-            ${trip?.toCity ?? '—'}
-          </div>
-          <div class="trip-station"
-               style="text-align:left">
-            ${trip?.toStation ?? ''}
-          </div>
+        <div class="trip-side trip-side-arrival" style="text-align:left;direction:ltr;">
+          <div class="trip-label" style="text-align:left">الوصول</div>
+          <div class="trip-state" style="text-align:left">${trip?.toState ?? ''}</div>
+          <div class="trip-city" style="text-align:left">${trip?.toCity ?? '—'}</div>
+          <div class="trip-station" style="text-align:left">${trip?.toStation ?? ''}</div>
           <div class="trip-time-block">
-            <div class="trip-date"
-                 style="text-align:left">
-              ${fmtDate(trip?.arrivalDate)}
-            </div>
-            <div class="trip-time"
-                 style="text-align:left">
-              ${fmtTime(trip?.arrivalTime)}
-            </div>
+            <div class="trip-date" style="text-align:left">${fmtDate(trip?.arrivalDate)}</div>
+            <div class="trip-time" style="text-align:left">${fmtTime(trip?.arrivalTime)}</div>
           </div>
         </div>
-
       </div>
     </div>
 
     <hr class="dashed-divider">
 
-    <!-- ── PASSENGER DETAILS ── -->
     <div class="section">
       <div class="section-title">بيانات الركاب</div>
       <table>
         <thead>
           <tr>
-            <th style="text-align:right">
-              اسم الراكب
-            </th>
-            <th style="text-align:center">
-              العمر
-            </th>
-            <th style="text-align:center">
-              الجنس
-            </th>
-            <th style="text-align:center">
-              رقم المقعد
-            </th>
+            <th style="text-align:right">اسم الراكب</th>
+            <th style="text-align:center">العمر</th>
+            <th style="text-align:center">الجنس</th>
+            <th style="text-align:center">رقم المقعد</th>
           </tr>
         </thead>
         <tbody>
@@ -725,96 +612,31 @@ export class PDFService {
 
     <hr class="dashed-divider">
 
-    <!-- ── PAYMENT DETAILS ── -->
     <div class="section">
       <div class="section-title">تفاصيل الدفع</div>
       <table class="payment-table">
         <thead>
           <tr>
-            <th style="text-align:right">
-              البيان
-            </th>
-            <th style="text-align:left;
-                       direction:ltr">
-              المبلغ
-            </th>
+            <th style="text-align:right">البيان</th>
+            <th style="text-align:left;direction:ltr">المبلغ</th>
           </tr>
         </thead>
         <tbody>
-          <tr style="
-            border-bottom:1px solid #99F6E4;
-          ">
-            <td style="
-              padding:10px 14px;
-              font-size:13px;
-            ">
-              سعر التذكرة الواحدة
-            </td>
-            <td style="
-              padding:10px 14px;
-              font-size:13px;
-              text-align:left;
-              direction:ltr;
-            ">
-              ${ticketPrice} ${currency}
-            </td>
+          <tr style="border-bottom:1px solid #99F6E4;">
+            <td style="padding:10px 14px;font-size:13px;">سعر التذكرة الواحدة</td>
+            <td style="padding:10px 14px;font-size:13px;text-align:left;direction:ltr;">${totalAmount} ${currency}</td>
           </tr>
-          <tr style="
-            border-bottom:1px solid #99F6E4;
-            background:#F0FDFA;
-          ">
-            <td style="
-              padding:10px 14px;
-              font-size:13px;
-            ">
-              عدد المقاعد المحجوزة
-            </td>
-            <td style="
-              padding:10px 14px;
-              font-size:13px;
-              text-align:left;
-              direction:ltr;
-            ">
-              ${passengers.length} مقعد
-            </td>
+          <tr style="border-bottom:1px solid #99F6E4;background:#F0FDFA;">
+            <td style="padding:10px 14px;font-size:13px;">عدد المقاعد المحجوزة</td>
+            <td style="padding:10px 14px;font-size:13px;text-align:left;direction:ltr;">${passengers.length} مقعد</td>
           </tr>
-          <tr style="
-            border-bottom:1px solid #99F6E4;
-          ">
-            <td style="
-              padding:10px 14px;
-              font-size:13px;
-            ">
-              طريقة الدفع
-            </td>
-            <td style="
-              padding:10px 14px;
-              font-size:13px;
-              text-align:left;
-              direction:ltr;
-            ">
-              ${paymentMethodLabel}
-            </td>
+          <tr style="border-bottom:1px solid #99F6E4;">
+            <td style="padding:10px 14px;font-size:13px;">طريقة الدفع</td>
+            <td style="padding:10px 14px;font-size:13px;text-align:left;direction:ltr;">${paymentMethodLabel}</td>
           </tr>
           <tr style="background:#CCFBF1;">
-            <td style="
-              padding:12px 14px;
-              font-size:15px;
-              font-weight:800;
-              color:#0D9488;
-            ">
-              الإجمالي المدفوع
-            </td>
-            <td style="
-              padding:12px 14px;
-              font-size:15px;
-              font-weight:800;
-              color:#0D9488;
-              text-align:left;
-              direction:ltr;
-            ">
-              ${totalAmount} ${currency}
-            </td>
+            <td style="padding:12px 14px;font-size:15px;font-weight:800;color:#0D9488;">الإجمالي المدفوع</td>
+            <td style="padding:12px 14px;font-size:15px;font-weight:800;color:#0D9488;text-align:left;direction:ltr;">${totalAmount} ${currency}</td>
           </tr>
         </tbody>
       </table>
@@ -822,13 +644,8 @@ export class PDFService {
 
   </div>
 
-  <!-- ══════════════════════════════════ -->
-  <!-- FOOTER                            -->
-  <!-- ══════════════════════════════════ -->
   <div class="ticket-footer">
-    <div class="footer-text">
-      يُرجى الحضور قبل موعد الانطلاق بـ 30 دقيقة
-    </div>
+    <div class="footer-text">يُرجى الحضور قبل موعد الانطلاق بـ 30 دقيقة</div>
   </div>
 
 </div>
