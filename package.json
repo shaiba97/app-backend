@@ -1,10 +1,10 @@
 {
   "name": "backend",
   "version": "0.0.1",
-  "description": "",
-  "author": "",
+  "description": "Bus booking backend microservices",
+  "author": "Rihla Team",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "MIT",
   "scripts": {
     "build": "nest build",
     "build:company": "nest build company",
@@ -37,6 +37,7 @@
   "dependencies": {
     "@hapi/boom": "^10.0.1",
     "@nestjs/common": "^11.0.1",
+    "@nestjs/config": "^3.2.3",
     "@nestjs/core": "^11.0.1",
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/microservices": "^11.1.19",
