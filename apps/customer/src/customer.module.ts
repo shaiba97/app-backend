@@ -4,10 +4,11 @@ import { CustomerService } from './customer.service';
 import { UsersModule } from './users/users.module';
 import { BookingModule } from './booking/booking.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { BlogModule } from './blog/blog.module';
 import { RihlaWsModule } from '@app/websocket';
 
 @Module({
-  imports: [UsersModule, BookingModule, NotificationsModule, RihlaWsModule],
+  imports: [UsersModule, BookingModule, NotificationsModule, BlogModule, RihlaWsModule],
   controllers: [CustomerController],
   providers: [CustomerService],
 })

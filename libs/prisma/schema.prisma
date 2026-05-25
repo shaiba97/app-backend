@@ -89,6 +89,7 @@ model users {
   Payment       Payment[]
   Bus           Bus[]
   notifications Notification[]
+  BlogPost      BlogPost[]
 
   @@index([email])
 }
@@ -137,6 +138,23 @@ model TicketPDF {
   ticketUrl   String
   generatedAt DateTime @default(now())
   Booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+model BlogPost {
+  id        String   @id @default(uuid())
+  title     String
+  slug      String   @unique
+  excerpt   String?
+  content   String
+  coverImage String?
+  authorId  String
+  author    users    @relation(fields: [authorId], references: [id])
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([published, createdAt])
 }
 
 enum SeatStartFrom {

@@ -97,12 +97,16 @@ export class PaymentService {
       method: payment.paymentMethod,
       status: payment.status,
     });
-    this.wsGateway.emitToCustomer(payment.customerId, WS_EVENTS.PAYMENT_CREATED, {
-      paymentId: payment.id,
-      bookingId: payment.bookingId,
-      status: payment.status,
-      message: 'تم إنشاء طلب الدفع بنجاح',
-    });
+    this.wsGateway.emitToCustomer(
+      payment.customerId,
+      WS_EVENTS.PAYMENT_CREATED,
+      {
+        paymentId: payment.id,
+        bookingId: payment.bookingId,
+        status: payment.status,
+        message: 'تم إنشاء طلب الدفع بنجاح',
+      },
+    );
 
     return {
       message: 'تم إنشاء الدفعة بنجاح',
@@ -243,7 +247,10 @@ export class PaymentService {
       where: { id },
     });
 
-    this.wsGateway.emitToAdmin(WS_EVENTS.PAYMENT_REJECTED, { paymentId: id, bookingId: existingPayment.bookingId });
+    this.wsGateway.emitToAdmin(WS_EVENTS.PAYMENT_REJECTED, {
+      paymentId: id,
+      bookingId: existingPayment.bookingId,
+    });
 
     return { message: 'تم حذف الدفعة بنجاح' };
   }

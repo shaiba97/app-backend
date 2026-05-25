@@ -181,6 +181,11 @@ export class CreateBookingWithPaymentDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
+  price?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
   platformFeeAmount?: number;
 
   @IsOptional()

@@ -208,7 +208,7 @@ export class BookingService {
           data: {
             bookingId: booking.id,
             customerId,
-            price: dto.companyAmount,
+            price: dto.price ?? tripPrice,
             totalAmount: dto.totalAmount,
             companyAmount: dto.companyAmount,
             commissionAmount: dto.commissionAmount,
