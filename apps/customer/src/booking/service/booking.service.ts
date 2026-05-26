@@ -2,8 +2,9 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@app/prisma';
 import { PaymentService } from './payment.service';
 import { PrismaService } from '@app/prisma';
 import {
@@ -11,7 +12,7 @@ import {
   UpdateBookingDto,
   CreateBookingWithPaymentDto,
 } from '../dto/booking.dto';
-import { BookingStatus, PaymentStatus } from '@prisma/client';
+import { BookingStatus, PaymentStatus } from '@app/prisma';
 import { RihlaWsGateway, WS_EVENTS } from '@app/websocket';
 import { RedisService } from '@app/redis';
 import { NotificationsService } from '../../notifications/notifications.service';
@@ -30,7 +31,7 @@ export class BookingService {
 
   async create(createBookingDto: CreateBookingDto, customerId: string) {
     try {
-      console.log(createBookingDto);
+      new Logger('BookingService').log('Creating booking: ' + JSON.stringify(createBookingDto));
       const trip = await this.prisma.trip.findUnique({
         where: { id: createBookingDto.tripId },
       });

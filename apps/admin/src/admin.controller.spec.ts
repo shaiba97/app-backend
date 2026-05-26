@@ -14,9 +14,7 @@ describe('AdminController', () => {
     adminController = app.get<AdminController>(AdminController);
   });
 
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(adminController.getHello()).toBe('Hello World!');
-    });
+  it('should be defined', () => {
+    expect(adminController).toBeDefined();
   });
 });

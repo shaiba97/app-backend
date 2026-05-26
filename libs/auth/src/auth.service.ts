@@ -23,6 +23,11 @@ export class AuthService {
       );
     }
 
+    if (!user.password) {
+      throw new UnauthorizedException(
+        'البريد الإلكتروني أو كلمة المرور غير صحيحة',
+      );
+    }
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
       throw new UnauthorizedException(
@@ -43,10 +48,6 @@ export class AuthService {
       name: user.name,
     };
 
-    console.log(
-      'Auth Service - JWT secret used for signing:',
-      process.env.JWT_SECRET || 'rihla_super_secret_jwt_key_2026',
-    );
     const token = this.jwtService.sign(payload);
 
     return {

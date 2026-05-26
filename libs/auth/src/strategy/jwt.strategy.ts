@@ -9,13 +9,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   private readonly logger = new Logger(JwtStrategy.name);
 
   constructor(private readonly authService: AuthService) {
-    const secret = process.env.JWT_SECRET || 'rihla_super_secret_jwt_key_2026';
-    console.log(`JWT Strategy initialized with secret: ${secret}`);
+    const secret = process.env.JWT_SECRET!;
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       secretOrKey: secret,
       algorithms: ['HS256'],
     });
+    this.logger.log('JWT Strategy initialized');
   }
 
   validate(payload: any) {

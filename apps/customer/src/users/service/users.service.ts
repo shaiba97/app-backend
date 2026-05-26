@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { CreateUserDto, UpdateUserDto } from '../dto/user.dto';
 import { UserEntity, UserWithoutPassword } from '../entity/user.entity';
-import { users } from '@prisma/client';
+import { users } from '@app/prisma';
 import { PrismaService } from '@app/prisma';
 import * as bcrypt from 'bcrypt';
 
@@ -10,6 +10,7 @@ const tokenBlacklist = new Set<string>();
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -123,7 +124,7 @@ export class UsersService {
         data: userEntity.toJSON(),
       };
     } catch (error: any) {
-      console.error('Error creating user:', error.message);
+      this.logger.error('Error creating user:', error.message);
       if (error.code === 'P2002') {
         return {
           success: false,
@@ -241,7 +242,7 @@ export class UsersService {
         data: userEntity.toJSON(),
       };
     } catch (error: any) {
-      console.error('Error updating user:', error.message);
+      this.logger.error('Error updating user:', error.message);
       if (error.code === 'P2002') {
         return {
           success: false,
@@ -281,7 +282,7 @@ export class UsersService {
         message: 'تم حذف المستخدم بنجاح',
       };
     } catch (error: any) {
-      console.error('Error deleting user:', error.message);
+      this.logger.error('Error deleting user:', error.message);
       return {
         success: false,
         message: 'فشل في حذف المستخدم',
@@ -312,7 +313,7 @@ export class UsersService {
 
       return { success: true, data: user };
     } catch (error: any) {
-      console.error('Error fetching user:', error.message);
+      this.logger.error('Error fetching user:', error.message);
       return {
         success: false,
         message: 'فشل في جلب بيانات المستخدم',

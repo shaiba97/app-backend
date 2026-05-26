@@ -14,9 +14,7 @@ describe('CustomerController', () => {
     customerController = app.get<CustomerController>(CustomerController);
   });
 
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(customerController.getHello()).toBe('Hello World!');
-    });
+  it('should be defined', () => {
+    expect(customerController).toBeDefined();
   });
 });

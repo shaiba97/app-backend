@@ -14,9 +14,7 @@ describe('CompanyController', () => {
     companyController = app.get<CompanyController>(CompanyController);
   });
 
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(companyController.getHello()).toBe('Hello World!');
-    });
+  it('should be defined', () => {
+    expect(companyController).toBeDefined();
   });
 });

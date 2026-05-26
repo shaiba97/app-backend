@@ -9,7 +9,7 @@ import {
 import { PrismaService } from '@app/prisma';
 import { PDFService } from '@app/pdf';
 import { RihlaWsGateway, WS_EVENTS } from '@app/websocket';
-import { PaymentStatus } from '@prisma/client';
+import { PaymentStatus } from '@app/prisma';
 import { CreatePaymentDto, UpdatePaymentDto } from '../dto/booking.dto';
 
 export interface CreatePaymentInput {

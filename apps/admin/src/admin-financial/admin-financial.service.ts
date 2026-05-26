@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '@app/prisma';
 import { PDFService } from '@app/pdf';
 import { RihlaWsGateway, WS_EVENTS } from '@app/websocket';
@@ -211,7 +211,7 @@ export class AdminFinancialService {
       const phone = payment.Booking?.passengerContact;
       if (phone) {
         const msg = `✅ تم تأكيد حجزك في رحلة!\n👤 المقعد: ${payment.Booking?.seatNumbers?.join(',')}\n💰 المبلغ: ${payment.totalAmount} جنيه${ticketUrl ? '\n🎫 التذكرة: http://localhost:3003' + ticketUrl : ''}`;
-        console.log('📱 WhatsApp (dev):', msg);
+        new Logger('WhatsApp').log('📱 WhatsApp (dev): ' + msg);
       }
     } catch { /* WhatsApp not available */ }
 

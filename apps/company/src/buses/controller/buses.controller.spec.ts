@@ -52,7 +52,7 @@ describe('BusesController', () => {
       const result = { success: true, message: 'تم إنشاء الحافلة بنجاح', data: { id: '1', ...createDto } };
       mockBusesService.create.mockResolvedValue(result);
 
-      const response = await controller.create(createDto);
+      const response = await controller.create({}, createDto);
       expect(mockBusesService.create).toHaveBeenCalledWith(createDto);
       expect(response).toEqual(result);
     });
@@ -63,7 +63,7 @@ describe('BusesController', () => {
       const result = [{ id: '1', name: 'حافلة 1' }, { id: '2', name: 'حافلة 2' }];
       mockBusesService.getBuses.mockResolvedValue(result);
 
-      const response = await controller.getBuses({});
+      const response = await controller.getBuses();
       expect(mockBusesService.getBuses).toHaveBeenCalled();
       expect(response).toEqual(result);
     });
@@ -91,27 +91,8 @@ describe('BusesController', () => {
     });
   });
 
-  describe('GET search-bus', () => {
-    it('should search buses with query params', async () => {
-      const result = { success: true, data: [{ id: '1' }], count: 1 };
-      mockBusesService.searchBus.mockResolvedValue(result);
-
-      const response = await controller.searchBus({ name: 'حافلة' });
-      expect(mockBusesService.searchBus).toHaveBeenCalledWith({ name: 'حافلة' });
-      expect(response).toEqual(result);
-    });
-  });
-
-  describe('POST search-bus', () => {
-    it('should search buses with body', async () => {
-      const result = { success: true, data: [{ id: '1' }], count: 1 };
-      mockBusesService.searchBus.mockResolvedValue(result);
-
-      const response = await controller.searchBusPost({ name: 'حافلة' });
-      expect(mockBusesService.searchBus).toHaveBeenCalledWith({ name: 'حافلة' });
-      expect(response).toEqual(result);
-    });
-  });
+  // GET/POST search-bus endpoints are not implemented in the controller.
+  // Tests were removed as they referenced non-existent methods.
 
   describe('PATCH update-bus/:id', () => {
     it('should update a bus', async () => {

@@ -11,6 +11,9 @@ import {
   Put,
   Delete,
   UploadedFile,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -44,29 +47,17 @@ const receiptStorage = multer.diskStorage({
   },
 });
 
-const receiptFileFilter = (
-  _req: Express.Request,
-  file: Express.Multer.File,
-  cb: multer.FileFilterCallback,
-) => {
-  const allowed = [
-    'image/jpeg',
-    'image/jpg',
-    'image/png',
-    'image/webp',
-    'image/heic',
-  ];
-  if (allowed.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error('نوع الملف غير مدعوم — يرجى رفع صورة (jpg, png, webp)'));
-  }
-};
-
 const uploadInterceptor = FileInterceptor('receiptFile', {
   storage: receiptStorage,
-  fileFilter: receiptFileFilter,
   limits: { fileSize: 5 * 1024 * 1024 },
+});
+
+const receiptFilePipe = new ParseFilePipe({
+  validators: [
+    new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+    new FileTypeValidator({ fileType: /image\/(jpeg|jpg|png|webp|heic)/ }),
+  ],
+  fileIsRequired: true,
 });
 
 // interface AuthenticatedRequest extends Request {
@@ -222,13 +213,9 @@ export class BookingController {
   @UseInterceptors(uploadInterceptor)
   async createPayment(
     @Body() dto: CreatePaymentDto,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile(receiptFilePipe) file: Express.Multer.File,
     @Req() req: Request,
   ) {
-    if (!file) {
-      throw new BadRequestException('صورة الإيصال مطلوبة');
-    }
-
     const receiptFile = `/uploads/receipts/${file.filename}`;
     const paymentData = { ...dto, receiptFile, customerId: (req as any).user.id };
 
@@ -240,13 +227,9 @@ export class BookingController {
   @UseInterceptors(uploadInterceptor)
   async createBookingWithPayment(
     @Body() dto: CreateBookingWithPaymentDto,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile(receiptFilePipe) file: Express.Multer.File,
     @Req() req: Request,
   ) {
-    if (!file) {
-      throw new BadRequestException('صورة الإيصال مطلوبة');
-    }
-
     const receiptFile = `/uploads/receipts/${file.filename}`;
     return await this.bookingService.createBookingWithPayment(
       dto,

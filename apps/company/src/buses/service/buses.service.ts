@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
   CreateBusDto,
   UpdateBusDto,
@@ -10,6 +10,7 @@ import { RihlaWsGateway, WS_EVENTS } from '@app/websocket';
 
 @Injectable()
 export class BusesService {
+  private readonly logger = new Logger(BusesService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly wsGateway: RihlaWsGateway,
@@ -46,11 +47,9 @@ export class BusesService {
       },
     });
 
-    console.log(
-      'Plate check for:',
-      createBusDto.plate.numbers,
-      '-> exists:',
-      existingBus !== null,
+    this.logger.log(
+      'Plate check for: ' + createBusDto.plate.numbers +
+      ' -> exists: ' + (existingBus !== null)
     );
 
     if (existingBus) {
@@ -84,7 +83,7 @@ export class BusesService {
         data: bus,
       };
     } catch (error: any) {
-      console.error('Error creating bus:', error.message);
+      this.logger.error('Error creating bus:', error.message);
       if (error.code === 'P2002') {
         return {
           success: false,
@@ -182,7 +181,7 @@ export class BusesService {
         data: updatedBus,
       };
     } catch (error: any) {
-      console.error('Error updating bus:', error.message);
+      this.logger.error('Error updating bus:', error.message);
       if (error.code === 'P2002') {
         return {
           success: false,

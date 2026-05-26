@@ -11,7 +11,7 @@ import {
   IsNotEmpty,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { BookingStatus, PaymentStatus } from '@prisma/client';
+import { BookingStatus, PaymentStatus } from '@app/prisma';
 
 export class PassengerItemDto {
   @IsString()
