@@ -423,7 +423,7 @@ export class PDFService {
       padding: 0;
     }
     body {
-      font-family: 'Noto Naskh Arabic', 'DejaVu Sans', sans-serif;
+      font-family: 'DejaVu Sans', sans-serif;
       background: #F0FDFA;
       direction: rtl;
       color: #134E4A;

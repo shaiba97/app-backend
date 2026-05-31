@@ -17,7 +17,7 @@ RUN apk add --no-cache \
   postgresql-client nginx gettext \
   chromium \
   freetype harfbuzz \
-  font-noto font-noto-arabic \
+  ttf-dejavu \
   && rm -rf /var/cache/apk/*
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
