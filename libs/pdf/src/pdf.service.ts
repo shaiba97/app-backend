@@ -3,6 +3,18 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { PrismaService } from '@app/prisma';
 
+function resolveChromium(): string | undefined {
+  const env = process.env.PUPPETEER_EXECUTABLE_PATH;
+  if (env && fs.existsSync(env)) return env;
+  const candidates = [
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium',
+    '/usr/lib/chromium/chrome',
+    '/snap/bin/chromium',
+  ];
+  return candidates.find(c => fs.existsSync(c));
+}
+
 @Injectable()
 export class PDFService {
   private readonly logger = new Logger(PDFService.name);
@@ -44,7 +56,7 @@ export class PDFService {
 
     try {
       const puppeteer = await import('puppeteer');
-      const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || undefined;
+      const executablePath = resolveChromium();
       const browser = await puppeteer.launch({
         headless: true,
         executablePath,
@@ -201,7 +213,7 @@ export class PDFService {
 
     try {
       const puppeteer = await import('puppeteer');
-      const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || undefined;
+      const executablePath = resolveChromium();
       const browser = await puppeteer.launch({
         headless: true,
         executablePath,
