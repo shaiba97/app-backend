@@ -312,7 +312,6 @@ export class BookingService {
 
       const ticket = await this.paymentService.generateTicket(
         result.booking,
-        result.payment,
       );
 
       await this.clearSeatLocksOnBooking(customerId, dto.tripId);

@@ -113,7 +113,7 @@ export class PaymentService {
       include: { Booking: { include: { Trip: true } } },
     });
 
-    const ticket = await this.generateTicket(booking, payment);
+    const ticket = await this.generateTicket(booking);
 
     this.wsGateway.emitToAdmin(WS_EVENTS.PAYMENT_CREATED, {
       paymentId: payment.id,
@@ -280,10 +280,9 @@ export class PaymentService {
     return { message: 'تم حذف الدفعة بنجاح' };
   }
 
-  async generateTicket(booking: any, paymentData?: any) {
+  async generateTicket(booking: any) {
     const ticketResult = await this.pdfService.generateTicket(
       booking.id as string,
-      paymentData,
     );
     const existingTicket = await this.prisma.ticketPDF.findUnique({
       where: { bookingId: booking.id },

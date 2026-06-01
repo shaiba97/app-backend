@@ -13,17 +13,13 @@ RUN npx prisma generate --schema=libs/prisma/schema.prisma
 RUN npm run build:admin && npm run build:company && npm run build:customer
 
 FROM node:22-alpine
-RUN apk add --no-cache \
-  postgresql-client nginx gettext \
-  chromium \
-  freetype harfbuzz \
-  ttf-dejavu \
+RUN apk add --no-cache postgresql-client nginx gettext \
   && rm -rf /var/cache/apk/*
-ENV PUPPETEER_SKIP_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 WORKDIR /app
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/fonts ./fonts
+COPY --from=build /app/assets ./assets
 COPY --from=build /app/libs/prisma/schema.prisma ./libs/prisma/schema.prisma
 COPY --from=build /app/package.json ./
 RUN npx prisma generate --schema=libs/prisma/schema.prisma
