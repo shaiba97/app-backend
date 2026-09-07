@@ -34,9 +34,13 @@ export class CreateUserDto {
   @MinLength(6)
   password: string;
 
-  @ApiProperty({ description: 'User role', enum: Role })
+  @ApiPropertyOptional({
+    description: 'User role — defaults to USER server-side',
+    enum: Role,
+  })
+  @IsOptional()
   @IsEnum(Role)
-  role: Role;
+  role?: Role;
 }
 
 export class UpdateUserDto {
