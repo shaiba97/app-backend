@@ -28,15 +28,18 @@ function resolveDirectUrl(): string | undefined {
   return url.replace(/-pooler\./, '.');
 }
 
+// The CLI datasource uses the DIRECT (non-pooled) URL for url AND directUrl so
+// no Prisma CLI command (migrate, resolve, db execute) can ever touch the pooler,
+// where session-level advisory locks leak into pooled server connections.
+const cliUrl = resolveDirectUrl();
+
 export default defineConfig({
   schema: 'libs/prisma/schema.prisma',
   migrations: {
     path: 'libs/prisma/migrations',
   },
   datasource: {
-    url: process.env['DATABASE_URL']
-      ? stripWrappingQuotes(process.env['DATABASE_URL'] as string)
-      : undefined,
-    directUrl: resolveDirectUrl(),
+    url: cliUrl,
+    directUrl: cliUrl,
   },
 });
