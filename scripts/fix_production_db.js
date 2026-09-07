@@ -1,7 +1,22 @@
 const { Client } = require('pg');
 const url = process.env.DATABASE_URL || process.env.DIRECT_URL;
 if (!url) { console.error('No DATABASE_URL found'); process.exit(1); }
-const client = new Client({ connectionString: url });
+
+// Build pg config from URL parts (never pass connectionString) so pg's
+// sslmode=require parsing warning never fires; sslmode stays implicit.
+function pgConfigFromUrl(url) {
+  const u = new URL(url);
+  return {
+    host: u.hostname,
+    port: parseInt(u.port || '5432'),
+    database: u.pathname.replace(/^\//, ''),
+    user: u.username,
+    password: decodeURIComponent(u.password),
+    ssl: { rejectUnauthorized: false },
+  };
+}
+
+const client = new Client(pgConfigFromUrl(url));
 
 const MIGRATION_NAME = '20260726000004_add_award_system';
 

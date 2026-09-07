@@ -53,13 +53,26 @@ function mask(url) {
   }
 }
 
+function pgConfigFromUrl(url) {
+  const u = new URL(url);
+  return {
+    host: u.hostname,
+    port: parseInt(u.port || '5432'),
+    database: u.pathname.replace(/^\//, ''),
+    user: u.username,
+    password: decodeURIComponent(u.password),
+  };
+}
+
 async function warmUpNeon(url) {
   console.log('[migrate] waking Neon compute…');
   for (let i = 1; i <= WARMUP_MAX_ATTEMPTS; i++) {
     const client = new Client({
-      connectionString: url,
+      ...pgConfigFromUrl(url),
       connectionTimeoutMillis: 15000,
       query_timeout: 10000,
+      // sslmode=require semantics: encrypt, don't pin cert (avoids pg's
+      // sslmode-parsing warning since we never pass a connectionString).
       ssl: { rejectUnauthorized: false },
     });
     try {
