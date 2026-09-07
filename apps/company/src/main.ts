@@ -88,7 +88,7 @@ async function bootstrap() {
 
   const corsOrigins = (process.env.CORS_ORIGINS ?? '')
     .split(',')
-    .map((s) => s.trim())
+    .map((s) => s.trim().replace(/^["']|["']$/g, '').trim())
     .filter((s) => s.startsWith('http://') || s.startsWith('https://'));
   app.useGlobalPipes(
     new ValidationPipe({

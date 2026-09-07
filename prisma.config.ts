@@ -3,11 +3,25 @@
 import 'dotenv/config';
 import { defineConfig } from 'prisma/config';
 
+function stripWrappingQuotes(value: string): string {
+  const trimmed = value.trim();
+  if (
+    trimmed.length >= 2 &&
+    ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+      (trimmed.startsWith("'") && trimmed.endsWith("'")))
+  ) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
+}
+
 function resolveDirectUrl(): string | undefined {
-  const explicit = process.env['DATABASE_URL_UNPOOLED'] ?? process.env['DIRECT_URL'];
-  if (explicit) return explicit;
-  const url = process.env['DATABASE_URL'];
-  if (!url) return undefined;
+  const explicitRaw =
+    process.env['DATABASE_URL_UNPOOLED'] ?? process.env['DIRECT_URL'];
+  if (explicitRaw) return stripWrappingQuotes(explicitRaw);
+  const raw = process.env['DATABASE_URL'];
+  if (!raw) return undefined;
+  const url = stripWrappingQuotes(raw);
   // Neon/serverless poolers (e.g. hosts ending in "-pooler") cannot run
   // migrations: session-level advisory locks hang over PgBouncer transaction
   // pooling. Derive the direct (non-pooled) URL automatically by stripping "-pooler".
@@ -20,7 +34,9 @@ export default defineConfig({
     path: 'libs/prisma/migrations',
   },
   datasource: {
-    url: process.env['DATABASE_URL'],
+    url: process.env['DATABASE_URL']
+      ? stripWrappingQuotes(process.env['DATABASE_URL'] as string)
+      : undefined,
     directUrl: resolveDirectUrl(),
   },
 });

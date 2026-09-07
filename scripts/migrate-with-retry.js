@@ -16,12 +16,25 @@ const SCHEMA = 'libs/prisma/schema.prisma';
 const MAX_ATTEMPTS = 5;
 const BACKOFF_MS = 15000;
 
+function stripWrappingQuotes(value) {
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  if (
+    trimmed.length >= 2 &&
+    ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+      (trimmed.startsWith("'") && trimmed.endsWith("'")))
+  ) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
+}
+
 function deriveDirectUrl(url) {
   if (!url) return url;
-  const explicit =
+  const explicitRaw =
     process.env['DATABASE_URL_UNPOOLED'] ?? process.env['DIRECT_URL'];
-  if (explicit) return explicit;
-  return url.replace(/-pooler\./, '.');
+  if (explicitRaw) return stripWrappingQuotes(explicitRaw);
+  return stripWrappingQuotes(url).replace(/-pooler\./, '.');
 }
 
 function mask(url) {
@@ -33,7 +46,7 @@ function mask(url) {
   }
 }
 
-const rawUrl = process.env['DATABASE_URL'];
+const rawUrl = stripWrappingQuotes(process.env['DATABASE_URL']);
 if (!rawUrl) {
   console.error('[migrate] DATABASE_URL is not set');
   process.exit(1);

@@ -15,7 +15,8 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   private prisma: PrismaClient;
 
   constructor() {
-    const url = new URL(process.env.DATABASE_URL!);
+    const rawDbUrl = (process.env.DATABASE_URL ?? '').trim().replace(/^["']|["']$/g, '').trim();
+    const url = new URL(rawDbUrl);
     const pool = new Pool({
       host: url.hostname,
       port: parseInt(url.port || '5432'),
