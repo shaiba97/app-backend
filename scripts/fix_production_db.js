@@ -21,13 +21,6 @@ async function run() {
     await client.query('ALTER TABLE "TicketPDF" ADD COLUMN IF NOT EXISTS "pdfData" TEXT');
     console.log('OK: TicketPDF.pdfData column ensured');
 
-    // 1bf. Clear corrupted pdfData rows (raw Buffer was stored as JSON-typed
-    // datum — Prisma then fails decoding: "got object: JVBERi..." — so the
-    // LIKE '{%' predicate matched 0 rows. Re-clear all rows; pdfData is
-    // optional and regenerates on next pdf/:id request via self-heal.
-    await client.query(`UPDATE "TicketPDF" SET "pdfData" = NULL`);
-    console.log('OK: TicketPDF.pdfData cleared (all rows nulled for Prisma decode)');
-
     // 1c. Add Booking.cancellationReason if missing (schema drift — no migration)
     await client.query('ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "cancellationReason" TEXT');
     console.log('OK: Booking.cancellationReason column ensured');

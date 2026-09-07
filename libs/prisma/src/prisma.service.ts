@@ -37,13 +37,25 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit() {
-    try {
-      await this.prisma.$connect();
-      this.logger.log('Database connected successfully');
-    } catch (error) {
-      const err = error as { message?: string };
-      this.logger.error('Database connection failed: ' + err.message);
+    const MAX_ATTEMPTS = 3;
+    const DELAY_MS = 2000;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        await this.prisma.$connect();
+        this.logger.log('Database connected successfully');
+        return;
+      } catch (error) {
+        const err = error as { message?: string };
+        this.logger.error(
+          `Database connection failed (attempt ${attempt}/${MAX_ATTEMPTS}): ${err.message}`,
+        );
+        if (attempt < MAX_ATTEMPTS) {
+          await new Promise((r) => setTimeout(r, DELAY_MS));
+        }
+      }
     }
+    this.logger.error('Database unreachable after retries — exiting');
+    process.exit(1);
   }
 
   async onModuleDestroy() {
