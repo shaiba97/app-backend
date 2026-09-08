@@ -15,7 +15,8 @@ export class OptionalJwtGuard implements CanActivate {
     }
     try {
       const jwtGuard = new (AuthGuard('jwt'))();
-      return await jwtGuard.canActivate(context);
+      const result = await jwtGuard.canActivate(context);
+      return Boolean(result);
     } catch {
       return true;
     }
